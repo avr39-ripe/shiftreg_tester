@@ -2,6 +2,12 @@
 #include <SmingCore/SmingCore.h>
 #include <SPI.h>
 
+const int data_pin = 12; // Connect Pin 11 to SER_OUT (serial data out)
+const int shld_pin = 4; // Connect Pin 8 to SH/!LD (shift or active low load)
+const int clk_pin = 14; // Connect Pin 12 to CLK (the clock that times the shifting)
+byte incoming; // Variable to store the 8 values loaded from the shift register
+
+
 const byte reg_in_latch = 4;
 const byte reg_out_latch = 5;
 
@@ -48,6 +54,11 @@ Timer procTimer;
 void debouncePin(byte pin);
 void setupPin(byte pin, unsigned int debounceDelay, bool mode);
 void loop();
+void loop1();
+
+byte read_shift_regs();
+void print_byte(byte val);
+
 
 void init()
 {
@@ -61,6 +72,17 @@ void init()
 //	out_reg.word = 43690;
 	out_reg.word = 21845L;
   
+	  // Initialize each digital pin to either output or input
+	  // We are commanding the shift register with each pin with the exception of the serial
+	  // data we get back on the data_pin line.
+	  pinMode(shld_pin, OUTPUT);
+	  pinMode(clk_pin, OUTPUT);
+	  pinMode(data_pin, INPUT);
+
+	  // Required initial states of these two pins according to the datasheet timing diagram
+	  digitalWrite(clk_pin, HIGH);
+	  digitalWrite(shld_pin, HIGH);
+
   
   SPI.begin();
   
@@ -78,10 +100,10 @@ void init()
   pinMode(reg_out_latch, OUTPUT);
   digitalWrite(reg_out_latch, LOW);
   
-  for(int i = 0; i < num_reg; i++)
-  {
-    SPI.transfer(0);
-  }
+//  for(int i = 0; i < num_reg; i++)
+//  {
+//    SPI.transfer(0);
+//  }
   
   digitalWrite(reg_out_latch, HIGH);
 
@@ -95,30 +117,53 @@ void loop()
 for(int c = 0; c < 2; c++) 
 {
   unsigned long now;
-  
+  uint8_t first_bit;
   int byteIndex;
   int shiftIndex;
   
-  
-  
+  //SPI.begin();
+//  pinMode(clk_pin, OUTPUT);
+//  digitalWrite(clk_pin, HIGH);
+
   digitalWrite(reg_in_latch, LOW);
   
-  delayMicroseconds(100);
+  delayMicroseconds(5);
   
   digitalWrite(reg_in_latch, HIGH);
   
   digitalWrite(reg_out_latch, LOW);
 
+  pinMode(data_pin, INPUT);
+  first_bit = digitalRead(data_pin);
+//  Serial.print("First bit: "); Serial.println(first_bit,DEC);
+
+
+  SPI.begin();
+
   for(int i = 0; i < num_reg; i++)
   {
     in_reg.bytes[i] = SPI.transfer(out_reg.bytes[num_reg - 1 - i]);
 
-    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
-    Serial.println(in_reg.bytes[i], BIN);
-    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
-    Serial.println(out_reg.bytes[i], BIN);
+//    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
+//    Serial.println(in_reg.bytes[i], BIN);
+//    print_byte(in_reg.bytes[i]);
+//    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
+//    Serial.println(out_reg.bytes[i], BIN);
+//    print_byte(out_reg.bytes[i]);
   }
   digitalWrite(reg_out_latch, HIGH);
+
+  in_reg.bytes[1] = (in_reg.bytes[1] >> 1) | ((in_reg.bytes[0] & 1) << 7);
+  in_reg.bytes[0] = (in_reg.bytes[0] >> 1) | (first_bit << 7);
+
+  for(int i = 0; i < num_reg; i++)
+  {
+
+    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
+    print_byte(in_reg.bytes[i]);
+    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
+    print_byte(out_reg.bytes[i]);
+  }
 
 for(int i = 0; i < num_ch; i++)
   {
@@ -208,4 +253,16 @@ void debouncePin(byte pin)
     
   } 
   inPins[pin]._lastState = inPins[pin]._currentState;
+}
+
+
+// A function that prints all the 1's and 0's of a byte, so 8 bits +or- 2
+void print_byte(byte val)
+{
+    byte i;
+    for(byte i=0; i<=7; i++)
+    {
+      Serial.print(val >> i & 1, BIN); // Magic bit shift, if you care look up the <<, >>, and & operators
+    }
+    Serial.print("\n"); // Go to the next line, do not collect $200
 }
