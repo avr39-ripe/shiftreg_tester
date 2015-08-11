@@ -2,11 +2,7 @@
 #include <SmingCore/SmingCore.h>
 #include <SPI.h>
 
-const int data_pin = 12; // Connect Pin 11 to SER_OUT (serial data out)
-const int shld_pin = 4; // Connect Pin 8 to SH/!LD (shift or active low load)
-const int clk_pin = 14; // Connect Pin 12 to CLK (the clock that times the shifting)
-byte incoming; // Variable to store the 8 values loaded from the shift register
-
+const int miso_pin = 12; // Connect Pin 11 to SER_OUT (serial data out)
 
 const byte reg_in_latch = 4;
 const byte reg_out_latch = 5;
@@ -68,45 +64,18 @@ void init()
 
 	Serial.println("Sming start");
 
-//  out_reg.word = 4294967295L;
+//initial out_reg state
+  out_reg.word = 4294967295L;
 //	out_reg.word = 43690;
-	out_reg.word = 21845L;
-  
-	  // Initialize each digital pin to either output or input
-	  // We are commanding the shift register with each pin with the exception of the serial
-	  // data we get back on the data_pin line.
-	  pinMode(shld_pin, OUTPUT);
-	  pinMode(clk_pin, OUTPUT);
-	  pinMode(data_pin, INPUT);
-
-	  // Required initial states of these two pins according to the datasheet timing diagram
-	  digitalWrite(clk_pin, HIGH);
-	  digitalWrite(shld_pin, HIGH);
-
-  
-  SPI.begin();
-  
-  unsigned long now = millis();
+//	out_reg.word = 21845L;
   
   for(int i = 0; i < num_ch; i++)
   {
-    setupPin(i, 20, LOW);
+    setupPin(i, 95, LOW);
   }
   
-
   pinMode(reg_in_latch, OUTPUT);
-  digitalWrite(reg_in_latch, HIGH);
-  
   pinMode(reg_out_latch, OUTPUT);
-  digitalWrite(reg_out_latch, LOW);
-  
-//  for(int i = 0; i < num_reg; i++)
-//  {
-//    SPI.transfer(0);
-//  }
-  
-  digitalWrite(reg_out_latch, HIGH);
-
   
   procTimer.initializeMs(100, loop).start();
 }
@@ -114,17 +83,12 @@ void init()
 
 void loop()
 {
-for(int c = 0; c < 2; c++) 
-{
-  unsigned long now;
+//for(int c = 0; c < 2; c++)
+//{
   uint8_t first_bit;
   int byteIndex;
   int shiftIndex;
   
-  //SPI.begin();
-//  pinMode(clk_pin, OUTPUT);
-//  digitalWrite(clk_pin, HIGH);
-
   digitalWrite(reg_in_latch, LOW);
   
   delayMicroseconds(5);
@@ -133,37 +97,28 @@ for(int c = 0; c < 2; c++)
   
   digitalWrite(reg_out_latch, LOW);
 
-  pinMode(data_pin, INPUT);
-  first_bit = digitalRead(data_pin);
-//  Serial.print("First bit: "); Serial.println(first_bit,DEC);
-
+  pinMode(miso_pin, INPUT); //workaround for 74hc165 "left shifted bit" bug
+  first_bit = digitalRead(miso_pin); //read and store very first bit of 74hc165 chain outside regular SPI.transfer
 
   SPI.begin();
 
   for(int i = 0; i < num_reg; i++)
   {
     in_reg.bytes[i] = SPI.transfer(out_reg.bytes[num_reg - 1 - i]);
-
-//    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
-//    Serial.println(in_reg.bytes[i], BIN);
-//    print_byte(in_reg.bytes[i]);
-//    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
-//    Serial.println(out_reg.bytes[i], BIN);
-//    print_byte(out_reg.bytes[i]);
   }
+
   digitalWrite(reg_out_latch, HIGH);
 
-  in_reg.bytes[1] = (in_reg.bytes[1] >> 1) | ((in_reg.bytes[0] & 1) << 7);
-  in_reg.bytes[0] = (in_reg.bytes[0] >> 1) | (first_bit << 7);
+  in_reg.bytes[1] = (in_reg.bytes[1] >> 1) | ((in_reg.bytes[0] & 1) << 7); //re-arrange bits in place
+  in_reg.bytes[0] = (in_reg.bytes[0] >> 1) | (first_bit << 7); //here we use our stored first bit
 
-  for(int i = 0; i < num_reg; i++)
-  {
-
-    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
-    print_byte(in_reg.bytes[i]);
-    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
-    print_byte(out_reg.bytes[i]);
-  }
+//  for(int i = 0; i < num_reg; i++)
+//  {
+//    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
+//    print_byte(in_reg.bytes[i]);
+//    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
+//    print_byte(out_reg.bytes[i]);
+//  }
 
 for(int i = 0; i < num_ch; i++)
   {
@@ -179,7 +134,7 @@ for(int i = 0; i < num_ch; i++)
      }
 }
 
-}//for loop
+//}//for loop
 
 }
 
