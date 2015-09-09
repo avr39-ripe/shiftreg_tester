@@ -50,9 +50,7 @@ Timer procTimer;
 void debouncePin(byte pin);
 void setupPin(byte pin, unsigned int debounceDelay, bool mode);
 void loop();
-void loop1();
 
-byte read_shift_regs();
 void print_byte(byte val);
 
 
@@ -71,20 +69,20 @@ void init()
   
   for(int i = 0; i < num_ch; i++)
   {
-    setupPin(i, 95, LOW);
+    setupPin(i, 100, LOW);
   }
   
   pinMode(reg_in_latch, OUTPUT);
   pinMode(reg_out_latch, OUTPUT);
   
-  procTimer.initializeMs(100, loop).start();
+  procTimer.initializeMs(200, loop).start();
 }
 
 
 void loop()
 {
-//for(int c = 0; c < 2; c++)
-//{
+for(int cnt = 0; cnt < 4; cnt++)
+{
   uint8_t first_bit;
   int byteIndex;
   int shiftIndex;
@@ -134,8 +132,7 @@ for(int i = 0; i < num_ch; i++)
      }
 }
 
-//}//for loop
-
+} //cnt loop
 }
 
 void setupPin(byte pin, unsigned int debounceDelay, bool mode)
