@@ -4,8 +4,8 @@
 
 const int miso_pin = 12; // Connect Pin 11 to SER_OUT (serial data out)
 
-const byte reg_in_latch = 4;
-const byte reg_out_latch = 5;
+const byte reg_in_latch = 15;
+const byte reg_out_latch = 16;
 
 const byte num_ch = 16;
 const byte num_reg = num_ch / 8;
@@ -59,13 +59,13 @@ void init()
 	Serial.begin(SERIAL_BAUD_RATE); // 115200 by default
 	Serial.systemDebugOutput(false); // Allow debug output to serial
 
-
-	Serial.println("Sming start");
+	Serial.println("-= SPI 16ch tester start =-");
 
 //initial out_reg state
-  out_reg.word = 4294967295L;
+//	out_reg.word = 4294967295L; //ALL OFF
+	out_reg.word = 0;
 //	out_reg.word = 43690;
-//	out_reg.word = 21845L;
+//	out_reg.word = 21845L; //ON 101010
   
   for(int i = 0; i < num_ch; i++)
   {
@@ -110,13 +110,13 @@ for(int cnt = 0; cnt < 4; cnt++)
   in_reg.bytes[1] = (in_reg.bytes[1] >> 1) | ((in_reg.bytes[0] & 1) << 7); //re-arrange bits in place
   in_reg.bytes[0] = (in_reg.bytes[0] >> 1) | (first_bit << 7); //here we use our stored first bit
 
-//  for(int i = 0; i < num_reg; i++)
-//  {
-//    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
-//    print_byte(in_reg.bytes[i]);
-//    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
-//    print_byte(out_reg.bytes[i]);
-//  }
+  for(int i = 0; i < num_reg; i++)
+  {
+    Serial.print("REG-IN"); Serial.print(i);Serial.print(" ");
+    print_byte(in_reg.bytes[i]);
+    Serial.print("REG-OUT"); Serial.print(i);Serial.print(" ");
+    print_byte(out_reg.bytes[i]);
+  }
 
 for(int i = 0; i < num_ch; i++)
   {
